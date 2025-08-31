@@ -1,0 +1,29 @@
+/* Hide "array", "string", etc. under inputs */
+.swagger-ui .model .prop-type {
+  display: none !important;
+}
+
+/* Hide "Send empty value" checkbox */
+.swagger-ui .parameters-container .parameter__empty-value-label {
+  display: none !important;
+}
+
+/* Beautify "Add string item" button */
+.swagger-ui .btn.add-item {
+  background-color: #667eea;
+  color: white;
+  border: none;
+  padding: 6px 12px;
+  border-radius: 8px;
+  font-weight: bold;
+  transition: 0.3s ease;
+}
+.swagger-ui .btn.add-item:hover {
+  background-color: #5a67d8;
+}
+
+/* Optional: Hide expandable model boxes */
+.swagger-ui .model-title,
+.swagger-ui .model-box-control {
+  display: none !important;
+}

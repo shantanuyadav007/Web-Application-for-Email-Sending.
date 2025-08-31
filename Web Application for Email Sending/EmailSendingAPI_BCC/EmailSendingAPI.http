@@ -1,0 +1,6 @@
+@EmailSendingAPI_HostAddress = http://localhost:5205
+
+GET {{EmailSendingAPI_HostAddress}}/emailsending/
+Accept: application/json
+
+###

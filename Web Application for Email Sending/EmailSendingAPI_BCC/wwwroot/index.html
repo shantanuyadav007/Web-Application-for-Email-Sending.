@@ -1,0 +1,291 @@
+<!DOCTYPE html>
+<html lang="en" style="display: none;">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta http-equiv="Cache-Control" content="no-store, no-cache, must-revalidate" />
+    <meta http-equiv="Pragma" content="no-cache" />
+    <meta http-equiv="Expires" content="0" />
+    <title>Email Web Application </title>
+
+    <!-- Base64 favicon to prevent 404 -->
+    <link rel="icon" type="image/png" href="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAAAXNSR0IArs4c6QAAAB5JREFUOE9jZKAQM2fAgAeP/v37h8EgBhiMIAY2BkoAAL4SBpYb6oSDAAAAAElFTkSuQmCC" />
+
+    <!-- Token check -->
+    <script>
+        (async () => {
+            console.log('index.html origin:', window.location.origin);
+            console.log('Index.html loaded at:', new Date().toISOString());
+
+            let token = localStorage.getItem('jwtToken') || sessionStorage.getItem('jwtToken');
+            const urlParams = new URLSearchParams(window.location.search);
+            const urlToken = urlParams.get('token');
+            if (urlToken && !token) {
+                console.log('Token found in URL, storing in localStorage and sessionStorage');
+                localStorage.setItem('jwtToken', urlToken);
+                sessionStorage.setItem('jwtToken', urlToken);
+                token = urlToken;
+                window.history.replaceState({}, document.title, 'http://localhost:5205/index.html');
+            }
+
+            console.log('Token retrieved on index.html:', token ? 'Present' : 'null', 'Token:', token);
+
+            if (!token) {
+                console.log('No token found, redirecting to auth.html');
+                window.location.replace('http://localhost:5205/auth.html');
+                return;
+            }
+
+            console.log('Rendering page without immediate validation');
+            document.documentElement.style.display = 'block';
+        })();
+    </script>
+
+    <style>
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            margin: 0;
+            padding: 0;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(to bottom right, #bfdbfe, #c191f1ad);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            position: relative;
+        }
+
+        
+        .logo {
+            position: absolute; 
+            top: 20px;
+            left: 20px;
+            max-width: 150px; 
+        }
+
+        .container {
+            background-color: #c5bf94a6;
+            padding: 30px;
+            border-radius: 16px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+            width: 100%;
+            max-width: 600px;
+            margin: 20px;
+            text-align: center;
+        }
+
+        h2 {
+            text-align: center;
+            margin-bottom: 20px;
+        }
+
+        input, textarea {
+            width: 100%;
+            padding: 12px;
+            margin-bottom: 15px;
+            border-radius: 10px;
+            border: 1px solid #ccc;
+            font-size: 14px;
+            outline: none;
+        }
+
+        button {
+            width: 100%;
+            padding: 12px;
+            background: linear-gradient(to right, #343749, #764ba2);
+            color: white;
+            font-size: 16px;
+            border: none;
+            border-radius: 10px;
+            cursor: pointer;
+            transition: background 0.3s ease;
+        }
+
+            button:hover {
+                background: linear-gradient(to right, #5a67d8, #274d7c);
+            }
+
+        #status {
+            margin-top: 10px;
+            text-align: center;
+            font-weight: bold;
+        }
+
+        .logout-button {
+            margin-top: 10px;
+            width: 100%;
+            padding: 12px;
+            background: linear-gradient(to right, #343749, #764ba2);
+            color: white;
+            font-size: 16px;
+            border: none;
+            border-radius: 10px;
+            cursor: pointer;
+            transition: background 0.3s ease;
+        }
+
+            .logout-button:hover {
+                background: linear-gradient(to right, #5a67d8, #6b46c1);
+            }
+    </style>
+</head>
+<body>
+    
+    <img class="logo" src="DNlogo.webp" alt="Data Nova Logo" />
+
+    <div class="container">
+        <h2>Send Email</h2>
+        <form id="emailForm">
+            <input type="text" id="emails" placeholder="To (semicolon-separated emails)" required />
+            <input type="text" id="ccs" placeholder="CC (semicolon-separated emails)" />
+            <input type="text" id="bccs" placeholder="BCC (semicolon-separated emails)" />
+            <input type="text" id="subject" placeholder="Subject" required />
+            <textarea id="message" placeholder="Message" rows="5" required></textarea>
+            <input type="file" id="files" multiple />
+            <button type="submit">Send Email</button>
+            <div id="status"></div>
+        </form>
+        <button class="logout-button" onclick="logout()">Logout</button>
+    </div>
+
+    <script>
+        function logout() {
+            localStorage.removeItem('jwtToken');
+            sessionStorage.removeItem('jwtToken');
+            localStorage.removeItem('lastLoginTime');
+            window.location.replace('http://localhost:5205/auth.html');
+        }
+
+        document.getElementById('emailForm').addEventListener('submit', async function (e) {
+            e.preventDefault();
+
+            let token = localStorage.getItem('jwtToken') || sessionStorage.getItem('jwtToken');
+            if (!token) {
+                window.location.replace('http://localhost:5205/auth.html');
+                return;
+            }
+
+            const statusDiv = document.getElementById('status');
+            statusDiv.textContent = 'Validating token...';
+            statusDiv.style.color = 'black';
+
+            
+            let isTokenValid = false;
+            try {
+                const headers = {
+                    'Authorization': `Bearer ${token}`,
+                    'Content-Type': 'application/json'
+                };
+                console.log('Validating token:', token);
+                console.log('Validation headers:', headers);
+                const response = await fetch('https://localhost:7205/api/auth/validate-token', {
+                    method: 'GET',
+                    headers: headers
+                });
+
+                const responseText = await response.text();
+                const responseHeaders = {};
+                response.headers.forEach((value, key) => { responseHeaders[key] = value; });
+                console.log('Validation result:', {
+                    status: response.status,
+                    statusText: response.statusText,
+                    headers: responseHeaders,
+                    body: responseText
+                });
+
+                if (response.ok) {
+                    isTokenValid = true;
+                } else {
+                    statusDiv.textContent = `Token validation failed: ${responseText || 'Unknown error'} (Status: ${response.status})`;
+                    statusDiv.style.color = 'red';
+                    if (response.status === 401) {
+                        localStorage.removeItem('jwtToken');
+                        sessionStorage.removeItem('jwtToken');
+                        localStorage.removeItem('lastLoginTime');
+                        setTimeout(() => window.location.replace('http://localhost:5205/auth.html'), 1000);
+                    }
+                    return;
+                }
+            } catch (error) {
+                console.error('Validation error:', error.message);
+                statusDiv.textContent = `Validation error: ${error.message}`;
+                statusDiv.style.color = 'red';
+                return;
+            }
+
+            if (!isTokenValid) {
+                statusDiv.textContent = 'Token validation failed. Please log in again.';
+                statusDiv.style.color = 'red';
+                return;
+            }
+
+            const emails = document.getElementById('emails').value.split(';').map(e => e.trim()).filter(Boolean);
+            const ccs = document.getElementById('ccs').value.split(';').map(e => e.trim()).filter(Boolean);
+            const bccs = document.getElementById('bccs').value.split(';').map(e => e.trim()).filter(Boolean);
+            const subject = document.getElementById('subject').value;
+            const msg = document.getElementById('message').value;
+            const files = document.getElementById('files').files;
+
+            const formData = new FormData();
+            emails.forEach(e => formData.append('Emails', e));
+            ccs.forEach(c => formData.append('Ccs', c));
+            bccs.forEach(b => formData.append('Bccs', b));
+            formData.append('Subject', subject);
+            formData.append('Msg', msg);
+            for (const file of files) {
+                formData.append('Files', file);
+            }
+
+            statusDiv.textContent = 'Sending...';
+            statusDiv.style.color = 'black';
+
+            try {
+                const headers = {
+                    'Authorization': `Bearer ${token}`
+                };
+                console.log('Sending email with token:', token);
+                console.log('Email send headers:', headers);
+                const response = await fetch('https://localhost:7205/api/email/send', {
+                    method: 'POST',
+                    headers: headers,
+                    body: formData
+                });
+
+                const responseText = await response.text();
+                const responseHeaders = {};
+                response.headers.forEach((value, key) => { responseHeaders[key] = value; });
+                console.log('Email send response:', {
+                    status: response.status,
+                    statusText: response.statusText,
+                    headers: responseHeaders,
+                    body: responseText
+                });
+
+                if (response.ok) {
+                    statusDiv.textContent = 'Email sent successfully!';
+                    statusDiv.style.color = 'green';
+                } else if (response.status === 401) {
+                    statusDiv.textContent = 'Session expired. Redirecting...';
+                    statusDiv.style.color = 'red';
+                    localStorage.removeItem('jwtToken');
+                    sessionStorage.removeItem('jwtToken');
+                    localStorage.removeItem('lastLoginTime');
+                    setTimeout(() => window.location.replace('http://localhost:5205/auth.html'), 1000);
+                } else {
+                    const isRestricted = responseText.includes('Not allowed to send emails to restricted email ID');
+                    const isLargeFile = responseText.includes('Attachment size exceeds 10 MB limit');
+                    statusDiv.textContent = isRestricted || isLargeFile ? responseText : `Failed to send email: ${response.status} - ${responseText || 'Unknown error'}`;
+                    statusDiv.style.color = 'red';
+                }
+            } catch (error) {
+                console.error('Send failed:', error.message);
+                statusDiv.textContent = `Failed to send email: ${error.message}`;
+                statusDiv.style.color = 'red';
+            }
+        });
+    </script>
+</body>
+</html>

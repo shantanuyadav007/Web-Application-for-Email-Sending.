@@ -1,0 +1,53 @@
+2025-06-19 16:06:37 [INFO] Now listening on: http://localhost:5205
+2025-06-19 16:06:37 [INFO] Now listening on: https://localhost:7205
+2025-06-19 16:06:38 [INFO] Application started. Press Ctrl+C to shut down.
+2025-06-19 16:06:38 [INFO] Hosting environment: Development
+2025-06-19 16:06:38 [INFO] Content root path: C:\Users\trainings.DATANOVA0\Desktop\EmailSendingAPI_BCC00 (Log)\EmailSendingAPI_BCC
+2025-06-19 16:06:42 [INFO] Processed GET /auth.html with status 200 in 5032f ms
+2025-06-19 16:06:49 [INFO] Login attempt for shantanu.yadav@datanova.co.in
+2025-06-19 16:06:50 [INFO] Login successful for shantanu.yadav@datanova.co.in
+2025-06-19 16:06:50 [INFO] Processed POST /api/auth/login with status 200 in 20922f ms
+2025-06-19 16:06:50 [INFO] Processed GET /index.html with status 200 in 942f ms
+2025-06-19 16:07:02 [INFO] Processed OPTIONS /api/auth/validate-token with status 204 in 12f ms
+2025-06-19 16:07:02 [INFO] Validating token
+2025-06-19 16:07:02 [INFO] Processed GET /api/auth/validate-token with status 200 in 1072f ms
+2025-06-19 16:07:02 [INFO] Processed OPTIONS /api/email/send with status 204 in 02f ms
+2025-06-19 16:07:03 [INFO] Sending email to shantanu.yadav@datanova.co.in
+2025-06-19 16:07:03 [INFO] Sending email to shantanu.yadav@datanova.co.in
+2025-06-19 16:07:06 [INFO] Email sent successfully to shantanu.yadav@datanova.co.in
+2025-06-19 16:07:06 [INFO] Logging email to database for shantanu.yadav@datanova.co.in
+2025-06-19 16:07:07 [INFO] Executed DbCommand (91ms) [Parameters=[@p0='?' (Size = 4000), @p1='?' (Size = 4000), @p2='?' (Size = 4000), @p3='?' (Size = 4000), @p4='?' (DbType = DateTime2), @p5='?' (Size = 4000), @p6='?' (Size = 4000), @p7='?' (Size = 4000)], CommandType='"Text"', CommandTimeout='30']
+SET IMPLICIT_TRANSACTIONS OFF;
+SET NOCOUNT ON;
+INSERT INTO [EmailLogs] ([AttachmentLink], [BccListCsv], [CcListCsv], [Message], [SentAt], [Status], [Subject], [ToListCsv])
+OUTPUT INSERTED.[Id]
+VALUES (@p0, @p1, @p2, @p3, @p4, @p5, @p6, @p7);
+2025-06-19 16:07:07 [INFO] Email logged successfully to database for shantanu.yadav@datanova.co.in
+2025-06-19 16:07:07 [INFO] Email sent successfully to shantanu.yadav@datanova.co.in
+2025-06-19 16:07:07 [INFO] Processed POST /api/email/send with status 200 in 43712f ms
+2025-06-19 16:08:12 [INFO] Application is shutting down...
+2025-06-19 16:09:00 [INFO] Now listening on: http://localhost:5005
+2025-06-19 16:09:00 [INFO] Application started. Press Ctrl+C to shut down.
+2025-06-19 16:09:00 [INFO] Hosting environment: Development
+2025-06-19 16:09:00 [INFO] Content root path: C:\Users\trainings.DATANOVA0\Desktop\EmailSendingAPI_BCC00 (Log)\EmailSendingAPI_BCC
+2025-06-19 16:09:04 [INFO] Processed GET /swagger/index.html with status 200 in 642f ms
+2025-06-19 16:09:04 [INFO] Processed GET /swagger/swagger-ui.css with status 200 in 232f ms
+2025-06-19 16:09:04 [INFO] Processed GET /swagger/swagger-ui-standalone-preset.js with status 200 in 192f ms
+2025-06-19 16:09:04 [INFO] Processed GET /swagger/swagger-ui-bundle.js with status 200 in 322f ms
+2025-06-19 16:09:05 [INFO] Processed GET /swagger/v1/swagger.json with status 200 in 972f ms
+2025-06-19 16:09:05 [INFO] Processed GET /swagger/favicon-32x32.png with status 200 in 02f ms
+2025-06-19 16:50:12 [INFO] Now listening on: http://localhost:5205
+2025-06-19 16:50:12 [INFO] Now listening on: https://localhost:7205
+2025-06-19 16:50:12 [INFO] Application started. Press Ctrl+C to shut down.
+2025-06-19 16:50:12 [INFO] Hosting environment: Development
+2025-06-19 16:50:12 [INFO] Content root path: C:\Users\trainings.DATANOVA0\Desktop\EmailSendingAPI_BCC00 (Log)\EmailSendingAPI_BCC
+2025-06-19 16:50:15 [INFO] Processed GET /auth.html with status 304 in 282f ms
+2025-06-19 16:50:16 [INFO] Validating token
+2025-06-19 16:50:16 [INFO] Processed GET /api/auth/validate-token with status 200 in 5082f ms
+2025-06-19 16:50:16 [INFO] Processed GET /index.html with status 200 in 362f ms
+2025-06-19 16:50:47 [INFO] Processed GET /auth.html with status 200 in 22f ms
+2025-06-19 16:52:05 [INFO] Login attempt for shantanu.yadav@datanova.co.in
+2025-06-19 16:52:11 [INFO] Login successful for shantanu.yadav@datanova.co.in
+2025-06-19 16:52:11 [INFO] Processed POST /api/auth/login with status 200 in 92492f ms
+2025-06-19 16:52:11 [INFO] Processed GET /index.html with status 200 in 22f ms
+2025-06-19 16:59:08 [INFO] Application is shutting down...

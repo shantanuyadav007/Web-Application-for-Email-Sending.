@@ -1,0 +1,633 @@
+<!DOCTYPE html>
+<html lang="en" style="display: none;">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta http-equiv="Cache-Control" content="no-store, no-cache, must-revalidate" />
+    <meta http-equiv="Pragma" content="no-cache" />
+    <meta http-equiv="Expires" content="0" />
+    <title>Email Web Application</title>
+
+    <!-- Auth check BEFORE anything renders -->
+    <script>
+        (async () => {
+            console.log('auth.html origin:', window.location.origin);
+            if (localStorage.getItem('isLoggingIn') === 'true') {
+                console.log('Login in progress, skipping initial auth check');
+                document.documentElement.style.display = 'block';
+                return;
+            }
+
+            const token = localStorage.getItem('jwtToken') || sessionStorage.getItem('jwtToken');
+            console.log('Initial auth check - Token:', token ? 'Present' : 'Not present');
+            if (token) {
+                try {
+                    const response = await fetch('http://localhost:5205/api/auth/validate-token', {
+                        method: 'GET',
+                        headers: {
+                            'Authorization': 'Bearer ' + token,
+                            'Content-Type': 'application/json'
+                        }
+                    });
+                    console.log('Token validation response:', response.status);
+                    if (response.ok) {
+                        console.log('Token valid, redirecting to index.html');
+                        window.location.replace('http://localhost:5205/index.html');
+                    } else {
+                        console.log('Token invalid, removing token');
+                        localStorage.removeItem('jwtToken');
+                        sessionStorage.removeItem('jwtToken');
+                        document.documentElement.style.display = 'block';
+                    }
+                } catch (error) {
+                    console.error('Error validating token:', error.message);
+                    localStorage.removeItem('jwtToken');
+                    sessionStorage.removeItem('jwtToken');
+                    document.documentElement.style.display = 'block';
+                }
+            } else {
+                document.documentElement.style.display = 'block';
+            }
+        })();
+    </script>
+
+    <style>
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            margin: 0;
+            padding: 0;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(to right, #c9b7d7, #a0b39b);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            position: relative;
+        }
+
+        .header-logo {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            max-width: 150px;
+        }
+
+        .card {
+            background-color: #d5bebc;
+            padding: 30px;
+            border-radius: 16px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+            width: 100%;
+            max-width: 500px;
+            margin: 20px;
+        }
+
+        h2, h3 {
+            text-align: center;
+            margin-bottom: 20px;
+        }
+
+        input, textarea {
+            width: 100%;
+            padding: 12px;
+            margin-bottom: 15px;
+            border-radius: 10px;
+            border: 1px solid #ccc;
+            font-size: 14px;
+        }
+
+        button {
+            width: 100%;
+            padding: 12px;
+            background: linear-gradient(to right, #667eea, #764ba2);
+            color: white;
+            font-size: 16px;
+            border: none;
+            border-radius: 10px;
+            cursor: pointer;
+        }
+
+            button:hover {
+                background: linear-gradient(to right, #5a67d8, #6b46c1);
+            }
+
+        p {
+            text-align: center;
+        }
+
+        .link {
+            cursor: pointer;
+            color: #333;
+            text-align: left;
+            display: block;
+            margin-bottom: 15px;
+        }
+
+            .link:hover {
+                text-decoration: underline;
+            }
+
+        #status, #loginStatus, #registerStatus, #fpStatus {
+            margin-top: 10px;
+            text-align: center;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+    <img class="header-logo" src="DNlogo.webp" alt="Data Nova Logo" />
+    <div class="card">
+        <h2>Login</h2>
+        <form id="loginForm">
+            <input type="email" name="email" placeholder="Email" required />
+            <input type="password" name="password" placeholder="Password" required />
+            <a href="#forgot" class="link" id="forgotPasswordLink">Forgot Password?</a>
+            <button type="submit">Login</button>
+            <div id="loginStatus"></div>
+            <p>Don't have an account? <a href="#register">Register</a></p>
+        </form>
+    </div>
+
+    <div class="card" style="display: none;">
+        <h2>Register</h2>
+        <form id="registerForm">
+            <input type="text" name="name" placeholder="Full Name" required />
+            <input type="email" name="email" placeholder="Email" required />
+            <input type="password" name="password" placeholder="Password" required />
+            <input type="password" name="confirmPassword" placeholder="Confirm Password" required />
+            <input type="text" id="otp" name="otp" placeholder="Enter OTP" style="display: none;" />
+            <button type="submit" id="registerButton">Request OTP</button>
+            <div id="registerStatus"></div>
+            <p>Already have an account? <a href="#login">Login</a></p>
+        </form>
+    </div>
+
+    <div class="card" id="forgotCard" style="display: none;">
+        <h2>Forgot Password</h2>
+        <form id="forgotForm">
+            <input type="email" id="fpEmail" placeholder="Enter your registered email" required />
+            <button type="button" id="fpRequestOtp">Request OTP</button>
+            <input type="text" id="fpOtp" placeholder="Enter OTP" style="display:none;" />
+            <input type="password" id="fpNewPassword" placeholder="New Password" style="display:none;" />
+            <input type="password" id="fpConfirmPassword" placeholder="Confirm New Password" style="display:none;" />
+            <button type="button" id="fpResetBtn" style="display:none;">Set New Password</button>
+            <div id="fpStatus"></div>
+            <p><a href="#login" class="link">Back to Login</a></p>
+        </form>
+    </div>
+
+    <script>
+        // Toggle forms
+        document.querySelectorAll('a[href="#login"]').forEach(link => {
+            link.addEventListener('click', () => {
+                document.querySelectorAll('.card').forEach(card => card.style.display = 'none');
+                document.querySelector('#loginForm').closest('.card').style.display = 'block';
+            });
+        });
+        document.querySelectorAll('a[href="#register"]').forEach(link => {
+            link.addEventListener('click', () => {
+                document.querySelectorAll('.card').forEach(card => card.style.display = 'none');
+                document.querySelector('#registerForm').closest('.card').style.display = 'block';
+            });
+        });
+        document.querySelectorAll('a[href="#forgot"]').forEach(link => {
+            link.addEventListener('click', () => {
+                document.querySelectorAll('.card').forEach(card => card.style.display = 'none');
+                document.querySelector('#forgotForm').closest('.card').style.display = 'block';
+            });
+        });
+
+        // Handle Login
+        let isRedirecting = false;
+        document.getElementById('loginForm').addEventListener('submit', async function (e) {
+            e.preventDefault();
+            if (isRedirecting) {
+                console.log('Redirect already in progress, ignoring submission');
+                return;
+            }
+
+            const statusDiv = document.getElementById('loginStatus');
+            statusDiv.textContent = 'Logging in...';
+            statusDiv.style.color = 'black';
+
+            const email = document.querySelector('#loginForm input[name="email"]').value;
+            const password = document.querySelector('#loginForm input[name="password"]').value;
+
+            try {
+                localStorage.setItem('isLoggingIn', 'true');
+                console.log('Starting login request for:', email);
+                const response = await fetch('http://localhost:5205/api/auth/login', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ email, password }),
+                });
+
+                const data = await response.json();
+                console.log('Login response:', data);
+
+                if (response.ok) {
+                    localStorage.setItem('jwtToken', data.token);
+                    sessionStorage.setItem('jwtToken', data.token);
+                    const storedToken = localStorage.getItem('jwtToken');
+                    console.log('Token set in localStorage:', storedToken);
+                    console.log('Token set in sessionStorage:', sessionStorage.getItem('jwtToken'));
+                    if (!storedToken || storedToken !== data.token) {
+                        console.error('Token storage failed in localStorage, using URL parameter');
+                        statusDiv.textContent = 'Error: Token storage failed, redirecting with URL parameter';
+                        statusDiv.style.color = 'red';
+                    } else {
+                        statusDiv.textContent = 'Login successful!';
+                        statusDiv.style.color = 'green';
+                    }
+                    isRedirecting = true;
+                    localStorage.removeItem('isLoggingIn');
+                    window.location.replace(`http://localhost:5205/index.html?token=${encodeURIComponent(data.token)}`);
+                } else {
+                    localStorage.removeItem('isLoggingIn');
+                    statusDiv.textContent = data.message || 'Login failed.';
+                    statusDiv.style.color = 'red';
+                }
+            } catch (error) {
+                localStorage.removeItem('isLoggingIn');
+                console.error('Login error:', error.message);
+                statusDiv.textContent = 'Error: ' + error.message;
+                statusDiv.style.color = 'red';
+            }
+        });
+
+        // Register
+        let isOtpSent = false;
+        document.getElementById('registerForm').addEventListener('submit', async function (e) {
+            e.preventDefault();
+            const statusDiv = document.getElementById('registerStatus');
+            const registerButton = document.getElementById('registerButton');
+            const otpInput = document.getElementById('otp');
+
+            const name = document.querySelector('#registerForm input[name="name"]').value;
+            const email = document.querySelector('#registerForm input[name="email"]').value;
+            const password = document.querySelector('#registerForm input[name="password"]').value;
+            const confirmPassword = document.querySelector('#registerForm input[name="confirmPassword"]').value;
+
+            if (!isOtpSent) {
+                statusDiv.textContent = 'Requesting OTP...';
+                statusDiv.style.color = 'black';
+
+                try {
+                    const response = await fetch('http://localhost:5205/api/auth/register', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ name, email, password, confirmPassword }),
+                    });
+
+                    const clonedResponse = response.clone();
+                    let data;
+
+                    try {
+                        data = await response.json();
+                    } catch {
+                        const text = await clonedResponse.text();
+                        data = { message: text || 'OTP sent to your email.' };
+                    }
+
+                    if (response.ok) {
+                        statusDiv.textContent = 'OTP sent successfully!';
+                        statusDiv.style.color = 'green';
+                        isOtpSent = true;
+                        registerButton.textContent = 'Verify & Register';
+                        otpInput.style.display = 'block';
+                        otpInput.setAttribute('required', 'true');
+                    } else {
+                        statusDiv.textContent = 'Failed to send OTP.';
+                        statusDiv.style.color = 'red';
+                    }
+                } catch (error) {
+                    statusDiv.textContent = 'Error: ' + error.message;
+                    statusDiv.style.color = 'red';
+                }
+            } else {
+                const otp = otpInput.value;
+                statusDiv.textContent = 'Verifying OTP...';
+                statusDiv.style.color = 'black';
+
+                try {
+                    const response = await fetch('http://localhost:5205/api/auth/verify-otp', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ name, email, otp, password, confirmPassword }),
+                    });
+
+                    const clonedResponse = response.clone();
+                    let data;
+
+                    try {
+                        data = await response.json();
+                    } catch {
+                        const text = await clonedResponse.text();
+                        data = { message: text || 'Registration successful. You can now log in.' };
+                    }
+
+                    if (response.ok) {
+                        statusDiv.textContent = 'Registration successful!';
+                        statusDiv.style.color = 'green';
+                        setTimeout(() => {
+                            document.querySelectorAll('.card').forEach(card => card.style.display = 'none');
+                            document.querySelector('#loginForm').closest('.card').style.display = 'block';
+                            isOtpSent = false;
+                            registerButton.textContent = 'Request OTP';
+                            otpInput.style.display = 'none';
+                            otpInput.removeAttribute('required');
+                            document.getElementById('registerForm').reset();
+                            statusDiv.textContent = '';
+                        }, 1000);
+                    } else {
+                        statusDiv.textContent = data.message || 'OTP verification failed.';
+                        statusDiv.style.color = 'red';
+                    }
+                } catch (error) {
+                    statusDiv.textContent = 'Error: ' + error.message;
+                    statusDiv.style.color = 'red';
+                }
+            }
+        });
+
+        // Forgot Password
+        let fpEmail = '', fpVerified = false;
+        document.getElementById('fpRequestOtp').addEventListener('click', async () => {
+            const status = document.getElementById('fpStatus');
+            fpEmail = document.getElementById('fpEmail').value;
+
+            // Basic email validation
+            if (!fpEmail || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(fpEmail)) {
+                status.textContent = 'Please enter a valid email.';
+                status.style.color = 'red';
+                return;
+            }
+
+            status.textContent = 'Requesting OTP...';
+            status.style.color = 'black';
+
+            try {
+                let response = await fetch('http://localhost:5205/api/auth/forgot-password/request-otp', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Accept': 'application/json'
+                    },
+                    body: JSON.stringify({ email: fpEmail }),
+                    redirect: 'manual'
+                });
+
+                //// Handle redirect manually and log the redirect URL
+                //if (response.status === 307 || response.status === 303) {
+                //    const redirectUrl = response.headers.get('Location');
+                //    if (redirectUrl) {
+                //        console.log('Redirect detected. Redirect URL:', redirectUrl);
+                //        console.log('Response status after initial request:', response.status);
+                //        status.textContent = `Redirected to: ${redirectUrl}. Retrying...`;
+                //        status.style.color = 'orange';
+                //        response = await fetch(redirectUrl, {
+                //            method: 'POST',
+                //            headers: {
+                //                'Content-Type': 'application/json',
+                //                'Accept': 'application/json'
+                //            },
+                //            body: JSON.stringify({ email: fpEmail })
+                //        });
+                //        console.log('Response status after redirect:', response.status);
+                //    } else {
+                //        throw new Error('Redirect URL not provided in Location header.');
+                //    }
+                //}
+
+                let data;
+                // Check if the response has a body before parsing as JSON
+                const contentLength = response.headers.get('Content-Length');
+                if (contentLength === '0' || !response.ok) {
+                    console.log('Response has no body or failed. Status:', response.status);
+                    data = { message: response.ok ? 'OTP sent to your email.' : 'Failed to send OTP. Server responded with status: ' + response.status };
+                } else {
+                    try {
+                        data = await response.json();
+                    } catch (error) {
+                        console.error('Error parsing response:', error);
+                        data = { message: response.ok ? 'OTP sent to your email.' : 'Failed to send OTP.' };
+                    }
+                }
+
+                if (response.ok) {
+                    status.textContent = `OTP sent to ${fpEmail}.`;
+                    status.style.color = 'green';
+                    document.getElementById('fpOtp').style.display = 'block';
+                    document.getElementById('fpRequestOtp').style.display = 'none';
+                } else {
+                    status.textContent = data.message || 'Failed to send OTP. Please try again.';
+                    status.style.color = 'red';
+                }
+            } catch (e) {
+                console.error('Request OTP error:', e);
+                status.textContent = 'Error sending OTP: ' + e.message;
+                status.style.color = 'red';
+            }
+        });
+
+        document.getElementById('fpOtp').addEventListener('input', async (e) => {
+            const otp = e.target.value.trim();
+            const status = document.getElementById('fpStatus');
+
+            if (!otp) {
+                status.textContent = 'Please enter the OTP.';
+                status.style.color = 'red';
+                return;
+            }
+
+            if (otp.length < 4) { // Assuming OTP is at least 4 characters
+                return;
+            }
+
+            status.textContent = 'Verifying OTP...';
+            status.style.color = 'black';
+
+            try {
+                let response = await fetch('http://localhost:5205/api/auth/forgot-password/verify-otp', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Accept': 'application/json'
+                    },
+                    body: JSON.stringify({ email: fpEmail, otp }),
+                    redirect: 'manual'
+                });
+
+                //// Handle redirect manually
+                //if (response.status === 307 || response.status === 303) {
+                //    const redirectUrl = response.headers.get('Location');
+                //    if (redirectUrl) {
+                //        console.log('Redirect detected. Redirect URL:', redirectUrl);
+                //        console.log('Response status after initial request:', response.status);
+                //        status.textContent = `Redirected to: ${redirectUrl}. Retrying...`;
+                //        status.style.color = 'orange';
+                //        response = await fetch(redirectUrl, {
+                //            method: 'POST',
+                //            headers: {
+                //                'Content-Type': 'application/json',
+                //                'Accept': 'application/json'
+                //            },
+                //            body: JSON.stringify({ email: fpEmail, otp })
+                //        });
+                //        console.log('Response status after redirect:', response.status);
+                //    } else {
+                //        throw new Error('Redirect URL not provided in Location header.');
+                //    }
+                //}
+
+                let data;
+                // Check if the response has a body before parsing as JSON
+                const contentLength = response.headers.get('Content-Length');
+                if (contentLength === '0' || !response.ok) {
+                    console.log('Response has no body or failed. Status:', response.status);
+                    data = { message: response.ok ? 'OTP verified.' : 'Invalid OTP. Server responded with status: ' + response.status };
+                } else {
+                    try {
+                        data = await response.json();
+                    } catch (error) {
+                        console.error('Error parsing OTP verification response:', error);
+                        data = { message: response.ok ? 'OTP verified.' : 'Invalid OTP.' };
+                    }
+                }
+
+                if (response.ok) {
+                    status.textContent = 'OTP verified. Please set your new password.';
+                    status.style.color = 'green';
+                    document.getElementById('fpOtp').setAttribute('disabled', 'true');
+                    document.getElementById('fpNewPassword').style.display = 'block';
+                    document.getElementById('fpConfirmPassword').style.display = 'block';
+                    document.getElementById('fpResetBtn').style.display = 'block';
+                    fpVerified = true;
+                } else {
+                    status.textContent = data.message || 'Invalid OTP. Please try again.';
+                    status.style.color = 'red';
+                }
+            } catch (e) {
+                console.error('Verify OTP error:', e);
+                status.textContent = 'Error verifying OTP: ' + e.message;
+                status.style.color = 'red';
+            }
+        });
+
+        document.getElementById('fpResetBtn').addEventListener('click', async () => {
+            const status = document.getElementById('fpStatus');
+            const password = document.getElementById('fpNewPassword').value.trim();
+            const confirmPassword = document.getElementById('fpConfirmPassword').value.trim();
+
+            if (!fpVerified) {
+                status.textContent = 'Please verify OTP first.';
+                status.style.color = 'red';
+                return;
+            }
+
+            if (!password || !confirmPassword) {
+                status.textContent = 'Please enter both password fields.';
+                status.style.color = 'red';
+                return;
+            }
+
+            if (password !== confirmPassword) {
+                status.textContent = 'Passwords do not match!';
+                status.style.color = 'red';
+                return;
+            }
+
+            if (password.length < 6) {
+                status.textContent = 'Password must be at least 6 characters long.';
+                status.style.color = 'red';
+                return;
+            }
+
+            status.textContent = 'Resetting password...';
+            status.style.color = 'black';
+
+            try {
+                let response = await fetch('http://localhost:5205/api/auth/forgot-password/reset', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Accept': 'application/json'
+                    },
+                    body: JSON.stringify({ email: fpEmail, newPassword: password, confirmPassword }),
+                    redirect: 'manual'
+                });
+
+                //// Handle redirect manually
+                //if (response.status === 307 || response.status === 303) {
+                //    const redirectUrl = response.headers.get('Location');
+                //    if (redirectUrl) {
+                //        console.log('Redirect detected. Redirect URL:', redirectUrl);
+                //        console.log('Response status after initial request:', response.status);
+                //        status.textContent = `Redirected to: ${redirectUrl}. Retrying...`;
+                //        status.style.color = 'orange';
+                //        response = await fetch(redirectUrl, {
+                //            method: 'POST',
+                //            headers: {
+                //                'Content-Type': 'application/json',
+                //                'Accept': 'application/json'
+                //            },
+                //            body: JSON.stringify({ email: fpEmail, newPassword: password, confirmPassword })
+                //        });
+                //        console.log('Response status after redirect:', response.status);
+                //    } else {
+                //        throw new Error('Redirect URL not provided in Location header.');
+                //    }
+                //}
+
+                let data;
+                // Check if the response has a body before parsing as JSON
+                const contentLength = response.headers.get('Content-Length');
+                if (contentLength === '0' || !response.ok) {
+                    console.log('Response has no body or failed. Status:', response.status);
+                    data = { message: response.ok ? 'Password reset successful.' : 'Reset failed. Server responded with status: ' + response.status };
+                } else {
+                    try {
+                        data = await response.json();
+                    } catch (error) {
+                        console.error('Error parsing reset password response:', error);
+                        data = { message: response.ok ? 'Password reset successful.' : 'Reset failed.' };
+                    }
+                }
+
+                if (response.ok) {
+                    status.textContent = 'Password reset successfully!';
+                    status.style.color = 'green';
+                    setTimeout(() => {
+                        document.getElementById('fpEmail').value = '';
+                        document.getElementById('fpOtp').value = '';
+                        document.getElementById('fpOtp').removeAttribute('disabled');
+                        document.getElementById('fpNewPassword').value = '';
+                        document.getElementById('fpConfirmPassword').value = '';
+                        document.getElementById('fpOtp').style.display = 'none';
+                        document.getElementById('fpNewPassword').style.display = 'none';
+                        document.getElementById('fpConfirmPassword').style.display = 'none';
+                        document.getElementById('fpResetBtn').style.display = 'none';
+                        document.getElementById('fpRequestOtp').style.display = 'block';
+                        status.textContent = '';
+                        fpVerified = false;
+                        fpEmail = '';
+
+                        document.querySelectorAll('.card').forEach(card => card.style.display = 'none');
+                        document.querySelector('#loginForm').closest('.card').style.display = 'block';
+                    }, 2000);
+                } else {
+                    status.textContent = data.message || 'Failed to reset password. Please try again.';
+                    status.style.color = 'red';
+                }
+            } catch (e) {
+                console.error('Reset password error:', e);
+                status.textContent = 'Error resetting password: ' + e.message;
+                status.style.color = 'red';
+            }
+        });
+    </script>
+</body>
+</html>
